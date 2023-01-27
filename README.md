@@ -1,0 +1,1 @@
+Projeto de um deploy de uma aplicação com frontend, backend e banco de dados mysql. Com o backend e banco de dados serão alocados em um cluster kubernetes na nuvem.
