@@ -2,7 +2,6 @@
 
 Este repositório contém um script que visa facilitar o processo de deployment de aplicações em um ambiente Kubernetes. O objetivo principal é automatizar e simplificar o processo de configuração e implantação, garantindo que qualquer pessoa, independentemente de sua experiência com Kubernetes, consiga realizar o deployment de forma eficiente e sem erros.
 
----
 
 ## Índice
 
@@ -13,7 +12,6 @@ Este repositório contém um script que visa facilitar o processo de deployment 
 - [Licença](#licença)
 - [Contato](#contato)
 
----
 
 ## Descrição
 
@@ -31,7 +29,6 @@ Este repositório possui um script que realiza as seguintes tarefas:
 - Suporte a configurações dinâmicas através de variáveis de ambiente.
 - Capacidade de integrar com ferramentas de CI/CD, facilitando a automação do processo de deployment em pipelines de produção.
 
----
 
 ## Como Usar
 
@@ -65,7 +62,6 @@ bash deploy.sh
 
 Esse comando irá iniciar o processo de criação e configuração do ambiente Kubernetes com base nas definições do script.
 
----
 
 ## Exemplo de Saída Esperada
 
@@ -88,7 +84,6 @@ Deployment realizado com sucesso! O aplicativo está disponível em seu cluster 
 
 Após o deployment, a aplicação estará disponível dentro do seu ambiente Kubernetes, e você poderá acessá-la via o serviço criado.
 
----
 
 ## Pré-Requisitos
 
@@ -100,13 +95,10 @@ Antes de executar o script, certifique-se de que você possui os seguintes pré-
   
 Recomenda-se também que o Kubernetes esteja configurado com permissões adequadas para a criação de pods e serviços, e que você tenha uma imagem Docker disponível em um repositório acessível.
 
----
-
 ## Licença
 
 Este projeto está licenciado sob a **MIT License**. Você pode ver o texto completo da licença abaixo:
 
----
 
 ## Contato
 
@@ -116,3 +108,5 @@ Se você tiver dúvidas ou sugestões, sinta-se à vontade para entrar em contat
 - **E-mail** 📧: [jacivaldocarvalho@email.com](mailto:jacivaldocarvalho@email.com)
 - **GitHub** 🐙: [jacivaldocarvalho](https://github.com/jacivaldocarvalho)
 - **Medium** ✍️: [jacivaldocarvalho](https://medium.com/@jacivaldocarvalho)
+
+Sempre aberto a novas conexões e oportunidades de aprendizado!
