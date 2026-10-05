@@ -10,44 +10,47 @@ network isolation. Services provide stable discovery while pod IPs can change.
 
 ```mermaid
 flowchart TB
-    Browser["Browser<br/>React application + fetch"]
-    LB["External load balancer<br/>provided by the cluster environment"]
-
-    subgraph Namespace["Application namespace · contact-form in local kind"]
-        subgraph WebTier["Frontend"]
-            Public["Service: php<br/>type: LoadBalancer<br/>TCP 80 → pod TCP 80<br/>selector: app=frontend"]
-            Web["Deployment: frontend · 2 replicas<br/>Nginx + compiled React assets<br/>pod label: app=frontend"]
-        end
-        subgraph APITier["Backend"]
-            API["Service: php-backend<br/>type: ClusterIP<br/>TCP 80 → pod TCP 80<br/>selector: app=php"]
-            PHP["Deployment: php · 6 replicas<br/>Apache + PHP + mysqli<br/>pod label: app=php"]
-        end
-        subgraph DataTier["Database"]
-            SQL["Service: mysql-connection<br/>type: ClusterIP (default)<br/>TCP 3306 → pod TCP 3306<br/>selector: app=mysql"]
-            DB["Deployment: mysql · 1 replica<br/>MySQL 8.4 · Recreate strategy<br/>pod label: app=mysql"]
-            PVC[("PVC: mysql-dados<br/>10Gi · ReadWriteOnce")]
-        end
-        Secret["Secret: application-database<br/>database credentials"]
-        Public -->|"ready frontend endpoints"| Web
-        Web -->|"HTTP: /index.php and /health.php"| API
-        API -->|"ready PHP endpoints"| PHP
-        PHP -->|"MySQL protocol · TCP 3306"| SQL
-        SQL -->|"ready MySQL endpoint"| DB
-        DB ---|"mount: /var/lib/mysql · subPath: mysql"| PVC
-        Secret -.->|"DB_* environment variables"| PHP
-        Secret -.->|"MYSQL_* environment variables"| DB
+    External["Browser → external load balancer<br/>HTTP · TCP 80"]
+    subgraph Namespace["Application namespace"]
+        Web["FRONTEND<br/>Service php · LoadBalancer :80<br/>selector app=frontend → 2 Nginx pods :80"]
+        API["BACKEND<br/>Service php-backend · ClusterIP :80<br/>selector app=php → 6 Apache/PHP pods :80"]
+        DB["DATABASE<br/>Service mysql-connection · ClusterIP :3306<br/>selector app=mysql → 1 MySQL pod :3306"]
+        Web -->|"HTTP · /index.php and /health.php"| API
+        API -->|"MySQL protocol · TCP 3306"| DB
     end
+    External -->|"cluster-dependent forwarding"| Web
+    classDef web fill:#e9f2df,stroke:#45685c,color:#172a2e
+    classDef api fill:#eaf0fa,stroke:#536b92,color:#172a2e
+    classDef data fill:#fff3de,stroke:#997337,color:#172a2e
+    class Web web
+    class API api
+    class DB data
+```
 
-    DNS["Cluster DNS<br/>Service name resolution"]
-    PV[("PersistentVolume<br/>provisioned by the default StorageClass")]
-    Browser -->|"HTTP · TCP 80"| LB
-    LB -->|"cluster-dependent forwarding"| Public
+Each workload block groups its Service and selected pods. The table below lists
+them as separate Kubernetes resources. Configuration and storage connections are
+shown separately to keep the request path readable.
+
+### DNS, credentials and storage
+
+```mermaid
+flowchart TB
+    DNS["Cluster DNS"]
+    Web["Nginx"]
+    PHP["PHP"]
+    DB["MySQL"]
+    Secret["Secret<br/>application-database"]
+    PVC[("PVC mysql-dados<br/>10Gi · ReadWriteOnce")]
+    PV[("PersistentVolume<br/>default StorageClass")]
     Web -.->|"resolve php-backend"| DNS
     PHP -.->|"resolve mysql-connection"| DNS
+    Secret -.->|"DB_* variables"| PHP
+    Secret -.->|"MYSQL_* variables"| DB
+    DB ---|"/var/lib/mysql · subPath mysql"| PVC
     PVC ---|"bound claim"| PV
 ```
 
-Solid arrows represent the request path; dashed arrows represent configuration
+The first diagram shows the request path; dashed arrows in the second diagram represent configuration
 or DNS dependencies. Storage connections represent mounts and volume binding,
 not HTTP or SQL traffic. React executes in the browser; the frontend container
 runs Nginx and serves the JavaScript bundle.
@@ -83,25 +86,25 @@ and allocated Service/pod IP addresses are dynamic and intentionally omitted.
 
 ```mermaid
 sequenceDiagram
-    participant B as Browser / React
-    participant N as Nginx (via Service php)
-    participant P as PHP (via Service php-backend)
-    participant M as MySQL (via Service mysql-connection)
+    participant B as Browser
+    participant N as Nginx
+    participant P as PHP
+    participant M as MySQL
     B->>N: GET / and /assets/*
     N-->>B: HTML, CSS and JavaScript
-    B->>N: POST /index.php (URL-encoded fields)
-    N->>P: Forward POST with unchanged path/body
-    P->>P: Validate nome, email and comentario
+    B->>N: POST /index.php
+    N->>P: Forward POST
+    P->>P: Validate fields
     alt Valid input and available database
-        P->>M: Prepared INSERT into mensagens
+        P->>M: Prepared INSERT
         M-->>P: Insert result
-        P-->>N: HTTP 200 + existing success text
+        P-->>N: HTTP 200 + success
         N-->>B: Forward response
     else Invalid input
-        P-->>N: HTTP 422 + validation message
+        P-->>N: HTTP 422 + error
         N-->>B: Forward response
     else Database operation fails
-        P-->>N: HTTP 503 + generic error
+        P-->>N: HTTP 503 + error
         N-->>B: Forward response
     end
 ```
@@ -122,7 +125,7 @@ node placement and replica count do not imply multiple physical hosts. The
 localhost-only tunnel instead:
 
 ```mermaid
-flowchart LR
+flowchart TB
     Browser["Browser<br/>http://localhost:8080"]
     Tunnel["kubectl port-forward<br/>127.0.0.1:8080"]
     API["Kubernetes API server<br/>port-forward transport"]
