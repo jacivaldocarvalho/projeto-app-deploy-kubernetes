@@ -1,5 +1,8 @@
 # Application deployment baseline
 
+This document records Phase 1. For the current runtimes, commit-tagged deployment
+and health checks, see [Container runtime and deployment](container-runtime.md).
+
 ## Build and configuration
 
 Run builds from the repository root:

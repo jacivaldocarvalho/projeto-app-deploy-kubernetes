@@ -2,7 +2,7 @@
 set -euo pipefail
 
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-for tool in docker kubectl; do
+for tool in docker kubectl git; do
     if ! command -v "$tool" >/dev/null 2>&1; then
         echo "Required tool not found: $tool" >&2
         exit 1
@@ -27,13 +27,37 @@ if grep -Eq '^MYSQL_USER=root$' .env; then
     exit 1
 fi
 
-echo 'Building application images...'
-docker build -f backend/dockerfile -t jncarvalho/projeto-backend:1.0 .
-docker build -f database/dockerfile -t jncarvalho/projeto-database:1.0 .
+if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+    echo 'Commit all repository changes before building a commit-tagged deployment.' >&2
+    exit 1
+fi
+image_tag="$(git rev-parse --verify HEAD)"
+backend_image="jncarvalho/projeto-backend:$image_tag"
+database_image="jncarvalho/projeto-database:$image_tag"
+render_directory="$(mktemp -d)"
+trap 'rm -rf -- "$render_directory"' EXIT
+cp deployment.yml services.yml "$render_directory/"
+cat > "$render_directory/kustomization.yaml" <<EOF
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - deployment.yml
+  - services.yml
+images:
+  - name: jncarvalho/projeto-backend
+    newTag: "$image_tag"
+  - name: jncarvalho/projeto-database
+    newTag: "$image_tag"
+EOF
+kubectl kustomize "$render_directory" > "$render_directory/rendered.yml"
+
+echo "Building application images for commit $image_tag..."
+docker build -f backend/dockerfile -t "$backend_image" .
+docker build -f database/dockerfile -t "$database_image" .
 
 echo 'Pushing application images...'
-docker push jncarvalho/projeto-backend:1.0
-docker push jncarvalho/projeto-database:1.0
+docker push "$backend_image"
+docker push "$database_image"
 
 echo 'Configuring database credentials...'
 if ! kubectl get secret application-database >/dev/null 2>&1; then
@@ -43,9 +67,8 @@ else
 fi
 
 echo 'Applying Kubernetes resources...'
-kubectl apply -f services.yml
-kubectl apply -f deployment.yml
+kubectl apply -f "$render_directory/rendered.yml"
 
 echo 'Waiting for application deployments...'
-kubectl rollout status deployment/mysql --timeout=180s
-kubectl rollout status deployment/php --timeout=180s
+kubectl rollout status deployment/mysql --timeout=600s
+kubectl rollout status deployment/php --timeout=300s

@@ -1,10 +1,10 @@
-FROM php:7.4-apache
+FROM php:8.4-apache-bookworm@sha256:57ccfbd765e5ee5f85dee5864e47ca8db0b540b0c091c052d9b275b2498a5395
 
 WORKDIR /var/www/html
 RUN docker-php-ext-install mysqli
 COPY backend/php.ini /usr/local/etc/php/conf.d/application.ini
 
-COPY backend/index.php backend/conexao.php ./
+COPY backend/index.php backend/conexao.php backend/health.php ./
 COPY frontend/index.html ./frontend.html
 COPY frontend/css.css frontend/js.js ./
 
