@@ -82,6 +82,9 @@ cluster name were rejected. The 15 existing tests passed through `make test`;
 source/rendered schema checks, syntax checks and actionlint passed.
 Four additional simulated safety checks passed for explicit kubeconfig/context/
 namespace routing, unowned clusters, unsafe names and unconfirmed deletion.
+The smoke check also passed with `PYTHONOPTIMIZE=1`. Two regression tests verified
+that missing forms and missing stored messages still fail under optimization,
+without reporting success, and terminate the temporary tunnel.
 
 These older installed versions were used only for this local validation; this
 record is not evidence of support for every Kubernetes version. Schema validation

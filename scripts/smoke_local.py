@@ -19,7 +19,8 @@ def main():
 
     def request(path, data=None):
         with urllib.request.urlopen(base + path, data=data, timeout=15) as response:
-            assert response.status == 200
+            if response.status != 200:
+                raise RuntimeError(f'Unexpected HTTP status for {path}: {response.status}')
             return response.read().decode()
 
     marker = 'kind-smoke-' + secrets.token_hex(12)
@@ -42,12 +43,15 @@ def main():
             else:
                 raise TimeoutError('Port forwarding did not become ready.')
             base = f'http://127.0.0.1:{port}'
-            assert '<form' in request('/')
-            assert request('/health.php').strip() == 'Ready'
+            if '<form' not in request('/'):
+                raise RuntimeError('Contact form was not served.')
+            if request('/health.php').strip() != 'Ready':
+                raise RuntimeError('Application readiness check failed.')
             payload = urllib.parse.urlencode({'nome': 'Kind validation',
                                              'email': 'kind@example.com',
                                              'comentario': marker}).encode()
-            assert request('/index.php', payload).strip() == 'New record created successfully'
+            if request('/index.php', payload).strip() != 'New record created successfully':
+                raise RuntimeError('Message submission did not return the expected response.')
 
             def row_count():
                 return kubectl('exec', 'deployment/mysql', '--', 'sh', '-c',
@@ -55,9 +59,11 @@ def main():
                                '--host=127.0.0.1 --user="$MYSQL_USER" --database="$MYSQL_DATABASE" '
                                f'--batch --skip-column-names --execute="SELECT COUNT(*) FROM mensagens WHERE comentario=\'{marker}\'"')
 
-            assert row_count() == '1', 'Submitted message was not stored.'
+            if row_count() != '1':
+                raise RuntimeError('Submitted message was not stored.')
             pvc = json.loads(kubectl('get', 'pvc', 'mysql-dados', '-o', 'json'))
-            assert pvc['status']['phase'] == 'Bound', 'PVC is not bound.'
+            if pvc['status']['phase'] != 'Bound':
+                raise RuntimeError('PVC is not bound.')
             old = json.loads(kubectl('get', 'pods', '-l', 'app=mysql', '-o', 'json'))['items'][0]
             kubectl('delete', 'pod', old['metadata']['name'], '--wait=true', '--timeout=120s')
             deadline = time.monotonic() + 150
@@ -70,7 +76,8 @@ def main():
                 time.sleep(2)
             else:
                 raise TimeoutError('Replacement MySQL pod did not become ready.')
-            assert row_count() == '1', 'Message did not survive MySQL pod replacement.'
+            if row_count() != '1':
+                raise RuntimeError('Message did not survive MySQL pod replacement.')
             deadline = time.monotonic() + 60
             while time.monotonic() < deadline:
                 try:

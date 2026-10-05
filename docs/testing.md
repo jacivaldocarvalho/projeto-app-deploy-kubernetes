@@ -68,6 +68,8 @@ copy; its checksum is still verified.
   contents, plus correct handling of integer and named ports.
 - `test_local_workflow.py`: explicit cluster context, namespace and kubeconfig;
   rejection of unowned clusters, unsafe names and unconfirmed deletion.
+- `test_smoke_local.py`: missing form and missing stored message fail even with
+  Python optimization enabled; the temporary tunnel is terminated on failure.
 
 Deployment tests never execute real push, Secret creation or kubectl apply.
 Integration tests only change their own disposable database.
