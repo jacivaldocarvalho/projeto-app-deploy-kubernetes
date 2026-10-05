@@ -1,0 +1,64 @@
+name: Validate application
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Application and deployment checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Install test dependencies
+        run: python -m pip install -r tests/requirements.txt
+
+      - name: Validate workflow and source syntax
+        run: |
+          docker run --rm -v "$PWD:/repo:ro" --workdir /repo rhysd/actionlint:1.7.11@sha256:6f03470d0152251d7f07f7c4dc019dbe7024c72cd952f839544c7798843efa8f
+          bash -n script.sh
+          node --check frontend/js.js
+          git diff --check HEAD^ HEAD
+
+      - name: Validate Kubernetes manifests
+        run: python tests/validate_manifests.py
+
+      - name: Build test images
+        run: |
+          docker build -f backend/dockerfile -t application-validation-backend:local .
+          docker build -f database/dockerfile -t application-validation-database:local .
+
+      - name: Validate PHP syntax
+        run: |
+          for file in index.php conexao.php health.php; do
+            docker run --rm application-validation-backend:local php -l "/var/www/html/$file"
+          done
+
+      - name: Run deployment and application tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v

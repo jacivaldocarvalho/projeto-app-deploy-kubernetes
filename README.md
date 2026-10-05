@@ -5,6 +5,7 @@
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Kubernetes](https://img.shields.io/badge/Deployment-Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Validate application](https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes/actions/workflows/validate.yml)
 
 A reference project for building and deploying a database-backed contact form on
 Kubernetes. It combines a static HTML/CSS/jQuery frontend, a PHP/Apache backend
@@ -161,9 +162,14 @@ validation, SQL injection text, Unicode persistence, MySQL authentication and
 readiness failure/recovery. See the recorded results in the
 [container runtime documentation](docs/container-runtime.md#phase-2-validation).
 
-There is currently no committed automated test suite or CI workflow. Windows
-batch execution, browser interaction, cluster execution and load testing have
-not been validated.
+Automated integration and deployment tests are versioned in `tests/`. The
+`Validate application` GitHub Actions workflow runs syntax, schema, image build
+and test checks on pushes to `main`/`develop` and pull requests targeting `main`.
+See [Testing and continuous integration](docs/testing.md) for local commands,
+coverage and workflow details. The workflow does not publish images or deploy.
+
+Windows batch execution, browser interaction, cluster execution and load testing
+have not been validated.
 
 ## Operations and limitations
 
