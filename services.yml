@@ -4,11 +4,24 @@ metadata:
   name: php
 spec:
   selector:
-    app: php
+    app: frontend
   ports:
     - port: 80
       targetPort: 80
   type: LoadBalancer
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-backend
+spec:
+  selector:
+    app: php
+  ports:
+    - port: 80
+      targetPort: 80
+  type: ClusterIP
 
 ---
 

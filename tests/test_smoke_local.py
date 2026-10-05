@@ -26,7 +26,7 @@ def http(url, data=None, **kwargs):
     elif url.endswith('/index.php'):
         body = b'New record created successfully'
     else:
-        body = b'<html>Missing form</html>' if scenario == 'form' else b'<form></form>'
+        body = b'<html>Missing form</html>' if scenario == 'form' else b'<div id="root"></div>'
     response.read.return_value = body
     context = Mock()
     context.__enter__ = Mock(return_value=response)

@@ -1,42 +1,15 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" type="text/css" href="css.css" media="screen" />
-
-
-    <title>Contact form</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b30" />
+  <meta name="description" content="Send a message through our contact form." />
+  <title>Contact Form on Kubernetes</title>
 </head>
 <body>
-    <div id="form-main">
-        <div id="form-div">
-          <form class="form" id="contact" method="post" action="index.php">
-            
-            <p class="name">
-              <input name="nome" type="text" class="feedback-input" placeholder="Name" aria-label="Name" id="name" required maxlength="50" />
-            </p>
-            
-            <p class="email">
-              <input name="email" type="email" class="feedback-input" id="email" placeholder="Email" aria-label="Email" required maxlength="50" />
-            </p>
-            
-            <p class="text">
-              <textarea name="comentario" class="feedback-input" id="comment" placeholder="Comment" aria-label="Comment" required maxlength="100"></textarea>
-            </p>
-            
-            
-            <div class="submit">
-              <button type="submit" value="SEND" id="button-blue">Send</button>
-              <div class="ease"></div>
-            </div>
-          </form>
-        </div>
-        
-    </div>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-<script src="js.js"> </script>
+  <div id="root"></div>
+  <noscript>Please enable JavaScript to use the contact form.</noscript>
+  <script type="module" src="/src/main.tsx"></script>
 </body>
-
 </html>

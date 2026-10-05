@@ -1,6 +1,8 @@
 """Exercise the real PHP/MySQL images using disposable Docker resources."""
 
 import json
+import os
+import re
 from pathlib import Path
 import secrets
 import subprocess
@@ -16,6 +18,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND_IMAGE = "application-validation-backend:local"
 DATABASE_IMAGE = "application-validation-database:local"
+FRONTEND_IMAGE = "application-validation-frontend:local"
 
 
 def docker(*arguments, check=True):
@@ -33,6 +36,7 @@ class ApplicationTests(unittest.TestCase):
         cls.network = "application-validation-" + secrets.token_hex(6)
         cls.database = cls.network + "-db"
         cls.backend = cls.network + "-web"
+        cls.frontend = cls.network + "-frontend"
         cls.root_password = secrets.token_urlsafe(32)
         cls.app_password = secrets.token_urlsafe(32)
         path = Path(cls.temporary.name)
@@ -50,9 +54,12 @@ class ApplicationTests(unittest.TestCase):
         cls.addClassCleanup(docker, "rm", "-f", "-v", cls.database)
         docker("run", "-d", "--name", cls.backend, "--network", cls.network,
                "--memory", "512m", "--memory-swap", "512m", "--cpus", "0.5",
-               "--env-file", str(backend_env), "-p", "127.0.0.1::80", BACKEND_IMAGE)
+               "--network-alias", "php-backend", "--env-file", str(backend_env), "-p", "127.0.0.1::80", BACKEND_IMAGE)
         cls.addClassCleanup(docker, "rm", "-f", "-v", cls.backend)
-        port = docker("port", cls.backend, "80/tcp").stdout.strip().rsplit(":", 1)[1]
+        docker("run", "-d", "--name", cls.frontend, "--network", cls.network,
+               "--memory", "128m", "--cpus", "0.25", "-p", "127.0.0.1::80", FRONTEND_IMAGE)
+        cls.addClassCleanup(docker, "rm", "-f", "-v", cls.frontend)
+        port = docker("port", cls.frontend, "80/tcp").stdout.strip().rsplit(":", 1)[1]
         cls.base = "http://127.0.0.1:" + port
         deployments = list(yaml.safe_load_all((ROOT / "deployment.yml").read_text()))
         mysql = next(item for item in deployments if item["metadata"]["name"] == "mysql")
@@ -95,11 +102,18 @@ class ApplicationTests(unittest.TestCase):
             with self.subTest(path=path):
                 status, body, headers = self.request(path)
                 self.assertEqual(status, 200)
-                self.assertIn("<form", body)
+                self.assertIn('id="root"', body)
                 self.assertNotIn("<?php", body)
                 self.assertIn("charset=utf-8", headers["Content-Type"])
-        for path in ("/css.css", "/js.js"):
+        assets = re.findall(r'(?:src|href)="(/assets/[^"]+)"', body)
+        self.assertGreaterEqual(len(assets), 2)
+        for path in assets:
             self.assertEqual(self.request(path)[0], 200)
+        self.assertEqual(self.request("/assets/missing.js")[0], 404)
+        self.assertEqual(self.request("/missing.php")[0], 404)
+        direct_port = docker("port", self.backend, "80/tcp").stdout.strip().rsplit(":", 1)[1]
+        with urllib.request.urlopen("http://127.0.0.1:" + direct_port + "/index.php", timeout=12) as direct:
+            self.assertIn('id="root"', direct.read().decode())
         self.assertEqual(docker("exec", self.backend, "php", "-r", 'echo PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;').stdout, "8.4")
         self.assertIn("8.4.", docker("exec", self.database, "mysql", "--version").stdout)
         command = 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql --user=root --batch --skip-column-names --execute="SELECT plugin FROM mysql.user WHERE User=\'application\'"'
@@ -113,6 +127,17 @@ class ApplicationTests(unittest.TestCase):
                 self.assertEqual(self.request(data=data)[:2], (200, "New record created successfully"))
         rows = self.query("SELECT nome, email, comentario FROM mensagens")
         self.assertCountEqual(rows, cases)
+
+    def test_browser_submission_and_interface(self):
+        result = subprocess.run(
+            ["npm", "run", "test:browser", "--prefix", str(ROOT / "frontend")],
+            cwd=ROOT, env={**os.environ, "BASE_URL": self.base},
+            capture_output=True, text=True, timeout=180,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        rows = self.query("SELECT comentario FROM mensagens WHERE nome='Browser validation'")
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]['comentario'].startswith('browser-'))
 
     def test_invalid_input_and_boundaries(self):
         cases = [{}, {**self.valid, "nome": ""}, {**self.valid, "nome": " "},

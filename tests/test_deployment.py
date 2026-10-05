@@ -106,10 +106,10 @@ class DeploymentTests(unittest.TestCase):
                 result, commands, rendered = self.run_script(secret=secret)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(sum(c.startswith("kubectl create secret") for c in commands), int(secret == "missing"))
-                self.assertEqual(sum(c.startswith("kubectl rollout") for c in commands), 2)
+                self.assertEqual(sum(c.startswith("kubectl rollout") for c in commands), 3)
                 images = [c["image"] for item in yaml.safe_load_all(rendered) if item["kind"] == "Deployment"
                           for c in item["spec"]["template"]["spec"]["containers"]]
-                self.assertCountEqual(images, ["jncarvalho/projeto-backend:" + COMMIT, "jncarvalho/projeto-database:" + COMMIT])
+                self.assertCountEqual(images, ["jncarvalho/projeto-backend:" + COMMIT, "jncarvalho/projeto-database:" + COMMIT, "jncarvalho/projeto-frontend:" + COMMIT])
                 for image in images:
                     self.assertTrue(any(c.startswith("docker build ") and ("-t " + image + " .") in c for c in commands))
                     self.assertIn("docker push " + image, commands)

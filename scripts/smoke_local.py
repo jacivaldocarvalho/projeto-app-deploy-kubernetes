@@ -43,7 +43,7 @@ def main():
             else:
                 raise TimeoutError('Port forwarding did not become ready.')
             base = f'http://127.0.0.1:{port}'
-            if '<form' not in request('/'):
+            if 'id="root"' not in request('/'):
                 raise RuntimeError('Contact form was not served.')
             if request('/health.php').strip() != 'Ready':
                 raise RuntimeError('Application readiness check failed.')
