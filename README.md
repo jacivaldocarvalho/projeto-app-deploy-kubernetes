@@ -1,112 +1,197 @@
-# Projeto de deployment de aplicações em um ambiente Kubernetes
+# Kubernetes Application Deployment
 
-Este repositório contém um script que visa facilitar o processo de deployment de aplicações em um ambiente Kubernetes. O objetivo principal é automatizar e simplificar o processo de configuração e implantação, garantindo que qualquer pessoa, independentemente de sua experiência com Kubernetes, consiga realizar o deployment de forma eficiente e sem erros.
+[![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![MySQL 8.4 LTS](https://img.shields.io/badge/MySQL-8.4_LTS-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
+[![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Kubernetes](https://img.shields.io/badge/Deployment-Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
+A reference project for building and deploying a database-backed contact form on
+Kubernetes. It combines a static HTML/CSS/jQuery frontend, a PHP/Apache backend
+and MySQL persistence with scripts for image publication and deployment.
 
-## Índice
+The focus is a small, reproducible application deployment: runtime configuration,
+commit-tagged images, persistent storage, input validation and availability checks.
+The project is intended for learning and experimentation; production requirements
+and current limitations are described below.
 
-- [Descrição](#descrição)
-- [Como Usar](#como-usar)
-- [Exemplo de Saída Esperada](#exemplo-de-saída-esperada)
-- [Pré-Requisitos](#pré-requisitos)
-- [Licença](#licença)
-- [Contato](#contato)
+## Architecture
 
+```mermaid
+flowchart LR
+    Browser[Browser] -->|HTTP| WebService["php Service · LoadBalancer"]
+    WebService --> App["PHP / Apache · 6 replicas<br/>Frontend + POST endpoint"]
+    App -->|SQL| DatabaseService["mysql-connection Service"]
+    DatabaseService --> Database["MySQL · 1 replica"]
+    Database --> Storage["mysql-dados PVC · 10Gi"]
+```
 
-## Descrição
+Apache serves the frontend and PHP endpoints on the same origin. The backend
+validates submissions and inserts messages using prepared statements. MySQL
+credentials are supplied at runtime through a Kubernetes Secret.
 
-O **Projeto App Deploy Kubernetes** é uma solução para automatizar o processo de deployment de aplicações em clusters Kubernetes. O script foi projetado para facilitar a criação de pods, deployments, serviços e outras configurações necessárias para a execução de uma aplicação dentro de um ambiente Kubernetes, tornando o processo mais ágil e sem necessidade de configurações manuais complexas.
+The PHP and MySQL base images are pinned by digest. Deployment scripts use the
+full Git commit hash as the tag for both application images, render the manifests
+with kubectl's built-in Kustomize and wait for deployment readiness.
 
-### Funcionalidade Principal
+## Requirements
 
-Este repositório possui um script que realiza as seguintes tarefas:
-- Criação de arquivos de configuração para deployments, serviços e volumes no Kubernetes.
-- Integração simples com repositórios de imagens Docker, possibilitando o uso de containers preexistentes.
-- Implementação de recursos e limites de CPU e memória para os containers.
-- Estratégias de deployment para escalabilidade e manutenção de alta disponibilidade.
+- Git and a clean working tree for commit-tagged deployment.
+- Docker CLI and a running Docker daemon.
+- kubectl with built-in Kustomize, configured for the target cluster and namespace.
+- A Kubernetes cluster with a default StorageClass able to provision a 10Gi PVC.
+- Registry credentials with push access to the configured `jncarvalho` repositories.
+- Bash on Linux, or Command Prompt on Windows.
 
-### Recursos Adicionais
-- Suporte a configurações dinâmicas através de variáveis de ambiente.
-- Capacidade de integrar com ferramentas de CI/CD, facilitando a automação do processo de deployment em pipelines de produção.
+External access uses a LoadBalancer Service. For local clusters without an
+external load balancer, use the port-forward command below.
 
+Image repositories are currently configured in `deployment.yml`, `script.sh` and
+`script.bat`. If you use another registry or account, update all three files
+consistently and commit those changes before deployment.
 
-## Como Usar
+## Getting started
 
-Para utilizar o script de deployment, siga os passos abaixo:
+Clone the repository:
 
-### 1. Clonando o Repositório
-Primeiro, clone o repositório para o seu ambiente local:
-
-```bash
+```sh
 git clone https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes.git
 cd projeto-app-deploy-kubernetes
 ```
 
-### 2. Instalando as Dependências
-Este projeto depende de algumas ferramentas para garantir que o script funcione corretamente. Certifique-se de que você tenha as seguintes ferramentas instaladas:
+Copy `.env.example` to `.env` (`cp .env.example .env` on Linux or
+`copy .env.example .env` on Windows). Replace both password placeholders with
+distinct strong passwords. Values use `KEY=value` without shell quotes; the
+scripts consume this file with `kubectl --from-env-file`.
 
-- **kubectl**: Ferramenta de linha de comando do Kubernetes.
-- **Docker**: Necessário para empacotar e gerenciar os containers.
-  
-Caso não tenha o `kubectl` ou o `Docker` instalados, você pode seguir os guias oficiais para instalação:
-- [Instalar kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [Instalar Docker](https://docs.docker.com/get-docker/)
+| Setting | Purpose |
+| --- | --- |
+| `MYSQL_ROOT_PASSWORD` | Database administration password |
+| `MYSQL_DATABASE` | Application database; defaults to `meubanco` |
+| `MYSQL_USER` | Dedicated application user; defaults to `application` |
+| `MYSQL_PASSWORD` | Application user password |
 
-### 3. Executando o Script
+The `.env` file is excluded from Git and the Docker build context. Existing
+Secrets are preserved; editing `.env` does not rotate a running database password.
 
-Com o repositório clonado e as dependências instaladas, você pode rodar o script de deployment. Dependendo do seu caso de uso, o comando pode ser o seguinte:
+Before running a deployment, confirm the cluster context and storage:
 
-```bash
-bash deploy.sh
+```sh
+kubectl config current-context
+kubectl get storageclass
 ```
 
-Esse comando irá iniciar o processo de criação e configuração do ambiente Kubernetes com base nas definições do script.
+Also confirm the intended namespace and authenticate to the configured registry
+with `docker login`. The scripts **build and push images and modify the current
+cluster namespace**.
 
+On Linux:
 
-## Exemplo de Saída Esperada
-
-Ao executar o script, você verá a seguinte saída no terminal:
-
-```bash
-Iniciando deployment da aplicação...
-
-Criando Deployment...
-Deployment 'app-deploy' criado com sucesso!
-
-Criando Serviço...
-Serviço 'app-service' configurado com sucesso!
-
-Aplicando configurações do Kubernetes...
-Configurações aplicadas com sucesso!
-
-Deployment realizado com sucesso! O aplicativo está disponível em seu cluster Kubernetes.
+```sh
+bash script.sh
 ```
 
-Após o deployment, a aplicação estará disponível dentro do seu ambiente Kubernetes, e você poderá acessá-la via o serviço criado.
+On Windows:
 
+```bat
+script.bat
+```
 
-## Pré-Requisitos
+The source manifest uses an `unpublished` placeholder tag. Use the scripts to
+render commit tags before applying resources; do not apply `deployment.yml`
+directly. Modified or untracked repository files block deployment.
 
-Antes de executar o script, certifique-se de que você possui os seguintes pré-requisitos instalados em seu sistema:
+## Access and verification
 
-- **Kubernetes** (em um cluster local ou remoto).
-- **kubectl** configurado para interagir com seu cluster Kubernetes.
-- **Docker** (para trabalhar com imagens de containers).
-  
-Recomenda-se também que o Kubernetes esteja configurado com permissões adequadas para a criação de pods e serviços, e que você tenha uma imagem Docker disponível em um repositório acessível.
+Inspect the deployments and service address:
 
-## Licença
+```sh
+kubectl get deployments,pods,pvc
+kubectl get service php
+```
 
-Este projeto está licenciado sob a **MIT License**. Você pode ver o texto completo da licença abaixo:
+Open the LoadBalancer address in a browser. Alternatively, start a local tunnel:
 
+```sh
+kubectl port-forward service/php 8080:80
+```
 
-## Contato
+With the tunnel running, open `http://localhost:8080` or use another terminal:
 
-Se você tiver dúvidas ou sugestões, sinta-se à vontade para entrar em contato!
+```sh
+curl --fail http://localhost:8080/health.php
+curl --fail http://localhost:8080/index.php \
+  --data-urlencode "nome=Example User" \
+  --data-urlencode "email=user@example.com" \
+  --data-urlencode "comentario=Hello from Kubernetes"
+```
 
-- **LinkedIn** 👔: [Jacivaldo Carvalho](https://www.linkedin.com/in/jacivaldocarvalho/)
-- **E-mail** 📧: [jacivaldocarvalho@email.com](mailto:jacivaldocarvalho@email.com)
-- **GitHub** 🐙: [jacivaldocarvalho](https://github.com/jacivaldocarvalho)
-- **Medium** ✍️: [jacivaldocarvalho](https://medium.com/@jacivaldocarvalho)
+Readiness returns `Ready`. A successful submission returns
+`New record created successfully` and persists a row in `mensagens`.
+The POST example is a Bash command and creates a message.
 
-Sempre aberto a novas conexões e oportunidades de aprendizado!
+## HTTP interface
+
+| Method and path | Behavior |
+| --- | --- |
+| `GET /` or `GET /index.php` | Serve the contact form |
+| `POST /index.php` | Validate and persist a message |
+| `GET /health.php` | Check database connectivity and application table access |
+
+POST accepts form-encoded fields `nome` (50 characters), `email` (50 characters,
+valid email address) and `comentario` (100 characters). All fields are required;
+values are trimmed before validation.
+
+Successful requests return HTTP 200. Invalid submissions return 422, unsupported
+methods return 405 and persistence/readiness failures return 503. Error responses
+exclude internal database details. Cross-origin access is not enabled.
+
+## Local builds and validation
+
+Build images without pushing or deploying:
+
+```sh
+docker build -f backend/dockerfile -t projeto-backend:local .
+docker build -f database/dockerfile -t projeto-database:local .
+```
+
+Image builds, PHP/Bash/JavaScript syntax checks, offline Kubernetes schema checks
+and isolated integration checks have been performed. Integration covered input
+validation, SQL injection text, Unicode persistence, MySQL authentication and
+readiness failure/recovery. See the recorded results in the
+[container runtime documentation](docs/container-runtime.md#phase-2-validation).
+
+There is currently no committed automated test suite or CI workflow. Windows
+batch execution, browser interaction, cluster execution and load testing have
+not been validated.
+
+## Operations and limitations
+
+- PHP startup/liveness checks exercise the web application independently of the
+  database. Readiness queries the database; a database outage makes PHP unready.
+- MySQL uses one replica with a Recreate strategy and persistent storage. Six PHP
+  replicas do not make the database highly available.
+- CPU/memory requests and limits are initial demonstration values, not
+  load-tested sizing.
+- Message IDs retain their original random range and are not guaranteed unique.
+- Authentication, rate limiting, TLS termination, backups and network policies
+  are not configured by this repository.
+- The frontend depends on externally hosted jQuery, fonts and CSS images,
+  including HTTP image URLs.
+
+This deployment targets a fresh MySQL 8.4 installation. Detailed configuration,
+probe behavior, resource values, persistence and rollback guidance are available
+in [Container runtime and deployment](docs/container-runtime.md).
+[Phase 1 validation](docs/phase-1-validation.md) records the earlier baseline.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Author
+
+**Jacivaldo Carvalho**
+
+Telecommunications Engineer | DevOps Engineer | SRE | Networking
+
+[GitHub](https://github.com/jacivaldocarvalho) | [LinkedIn](https://www.linkedin.com/in/jacivaldocarvalho) | [Website](https://www.jacivaldocarvalho.com/)
