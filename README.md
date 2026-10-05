@@ -256,6 +256,26 @@ probe behavior, resource values, persistence and rollback guidance are available
 in [Container runtime and deployment](docs/container-runtime.md).
 [Phase 1 validation](docs/phase-1-validation.md) records the earlier baseline.
 
+## Future improvements
+
+The following items are proposed follow-up work, not implemented features.
+Priorities may change with deployment requirements; each change should have its
+own scope, validation and review.
+
+| Priority | Improvement | Intended outcome |
+| --- | --- | --- |
+| 1 | Replace random message IDs with an auto-increment primary key | Guarantee unique identifiers through a migration that preserves existing messages. |
+| 2 | Add MySQL backup and restore procedures | Verify recovery independently of pod replacement and persistent storage. |
+| 3 | Protect the `main` branch | Require pull requests and successful CI checks, and restrict force pushes and deletion. |
+| 4 | Harden container execution | Evaluate non-root users, minimum privileges and read-only filesystems where compatible. |
+| 5 | Run kind deployment checks in CI | Automate workload readiness, storage and persistence checks currently performed locally. |
+| 6 | Make image repositories and registry configurable | Avoid editing several files when selecting another registry account. |
+
+Before an internet-facing deployment, evaluate TLS termination, form abuse
+controls and NetworkPolicies for the chosen environment. Structured logs, basic
+metrics and load tests can then support troubleshooting and resource sizing.
+Additional operational tooling should follow demonstrated needs.
+
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
