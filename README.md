@@ -18,27 +18,39 @@ commit-tagged images, persistent storage, input validation and availability chec
 The project is intended for learning and experimentation; production requirements
 and current limitations are described below.
 
+## Application preview
+
+### Desktop
+
+![Contact form desktop interface](docs/images/frontend-desktop.png)
+
+<details>
+<summary>Mobile view</summary>
+
+<img src="docs/images/frontend-mobile.png" alt="Contact form mobile interface" width="320" />
+
+</details>
+
+Screenshots of the running React application, captured during local kind validation.
+
 ## Architecture
 
 ```mermaid
-flowchart LR
-    Browser["Browser<br/>React runs here"]
-    subgraph Cluster["Kubernetes namespace"]
-        Public["Service: php<br/>LoadBalancer · TCP 80"]
-        Web["Deployment: frontend<br/>2 Nginx pods · TCP 80"]
-        API["Service: php-backend<br/>ClusterIP · TCP 80"]
-        PHP["Deployment: php<br/>6 Apache/PHP pods · TCP 80"]
-        SQL["Service: mysql-connection<br/>ClusterIP · TCP 3306"]
-        DB["Deployment: mysql<br/>1 MySQL pod · TCP 3306"]
-        PVC[("PVC: mysql-dados<br/>10Gi · ReadWriteOnce")]
-        Public -->|"app=frontend"| Web
-        Web -->|"HTTP proxy"| API
-        API -->|"app=php"| PHP
-        PHP -->|"MySQL protocol"| SQL
-        SQL -->|"app=mysql"| DB
-        DB ---|"/var/lib/mysql"| PVC
-    end
-    Browser -->|"HTTP · same origin"| Public
+%%{init: {'flowchart': {'rankSpacing': 25}}}%%
+flowchart TB
+    Browser["Browser · React"]
+    Web["Nginx × 2 · Service php<br/>LoadBalancer :80"]
+    API["PHP × 6 · Service php-backend<br/>ClusterIP :80"]
+    DB[("MySQL × 1 · mysql-connection<br/>ClusterIP :3306 · PVC 10Gi")]
+    Browser -->|"HTTP · same origin"| Web
+    Web -->|"HTTP proxy"| API
+    API -->|"MySQL protocol"| DB
+    classDef web fill:#e9f2df,stroke:#45685c,color:#172a2e
+    classDef api fill:#eaf0fa,stroke:#536b92,color:#172a2e
+    classDef data fill:#fff3de,stroke:#997337,color:#172a2e
+    class Web web
+    class API api
+    class DB data
 ```
 
 See [Architecture and networking](docs/architecture.md) for DNS resolution,
