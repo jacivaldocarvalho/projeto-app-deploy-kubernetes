@@ -23,10 +23,8 @@ spec:
         app: mysql
     spec:
       containers:
-      - image: jncarvalho/projeto-database:1.0
-        args:
-        - --ignore-db-dir=lost+found
-        imagePullPolicy: Always
+      - image: jncarvalho/projeto-database:unpublished
+        imagePullPolicy: IfNotPresent
         name: mysql
         ports:
         - containerPort: 3306
@@ -34,6 +32,7 @@ spec:
         volumeMounts:
         - name: mysql-dados
           mountPath: /var/lib/mysql/
+          subPath: mysql
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
@@ -55,6 +54,30 @@ spec:
             secretKeyRef:
               name: application-database
               key: MYSQL_PASSWORD
+        resources:
+          requests:
+            cpu: 100m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+        startupProbe:
+          tcpSocket:
+            port: mysql
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 60
+        readinessProbe:
+          exec:
+            command:
+            - sh
+            - -c
+            - MYSQL_PWD="$MYSQL_PASSWORD" mysql --protocol=TCP --host=127.0.0.1 --user="$MYSQL_USER"
+              --database="$MYSQL_DATABASE" --connect-timeout=3 --execute="SELECT 1
+              FROM mensagens LIMIT 1" >/dev/null 2>&1
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
       volumes:
       - name: mysql-dados
         persistentVolumeClaim:
@@ -81,10 +104,11 @@ spec:
     spec:
       containers:
       - name: php
-        image: jncarvalho/projeto-backend:1.0
-        imagePullPolicy: Always
+        image: jncarvalho/projeto-backend:unpublished
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
+          name: http
         env:
         - name: DB_HOST
           value: mysql-connection
@@ -103,3 +127,31 @@ spec:
             secretKeyRef:
               name: application-database
               key: MYSQL_PASSWORD
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        startupProbe:
+          httpGet:
+            path: /
+            port: http
+          periodSeconds: 5
+          timeoutSeconds: 2
+          failureThreshold: 30
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          periodSeconds: 15
+          timeoutSeconds: 2
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health.php
+            port: http
+          periodSeconds: 10
+          timeoutSeconds: 8
+          failureThreshold: 3

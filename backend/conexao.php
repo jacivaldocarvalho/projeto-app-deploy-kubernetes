@@ -11,7 +11,8 @@ foreach (['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'] as $variable) {
 }
 // Criar conexão
 $link = mysqli_init();
-$link->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+$link->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+$link->options(MYSQLI_OPT_READ_TIMEOUT, 3);
 $link->real_connect(
     $configuration['DB_HOST'],
     $configuration['DB_USER'],
