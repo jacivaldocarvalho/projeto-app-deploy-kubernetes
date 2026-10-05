@@ -3,48 +3,66 @@ kind: PersistentVolumeClaim
 metadata:
   name: mysql-dados
 spec:
-  acessModes:
-    - ReadWriteOnce
   resources:
-    request:
+    requests:
       storage: 10Gi
-  storageClassName: standard-rwo
-
+  accessModes:
+  - ReadWriteOnce
 ---
-
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata: 
-    name: mysql
-  spec:
-    selector:
-      matchLabels:
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
         app: mysql
-    template:
-      metadata:
-        labels:
-          app: mysql
-      spec: 
-        containers:
-        - image: jncarvalho/projeto-database:1.0
-          args:
-          - "--ignore-db-dir=lost+found"
-          imagePullPolicy: Always
+    spec:
+      containers:
+      - image: jncarvalho/projeto-database:1.0
+        args:
+        - --ignore-db-dir=lost+found
+        imagePullPolicy: Always
+        name: mysql
+        ports:
+        - containerPort: 3306
           name: mysql
-          ports:
-          - containerPort: 3306
-            name: mysql
-
-          volumeMounts:
-          - name: mysql-dados
-            mountPath: /var/lib/mysql/
-        volumes:
+        volumeMounts:
         - name: mysql-dados
-          PersistentVolumeClaim:
+          mountPath: /var/lib/mysql/
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_USER
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_PASSWORD
+      volumes:
+      - name: mysql-dados
+        persistentVolumeClaim:
           claimName: mysql-dados
-
+  replicas: 1
+  strategy:
+    type: Recreate
 ---
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -67,3 +85,21 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+        env:
+        - name: DB_HOST
+          value: mysql-connection
+        - name: DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_DATABASE
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: application-database
+              key: MYSQL_PASSWORD

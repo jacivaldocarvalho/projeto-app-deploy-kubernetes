@@ -1,21 +1,23 @@
-$("#button-blue").on("click", function() {
-    
-    var txt_nome = $("#name").val();
-    var txt_email = $("#email").val();
-    var txt_comentario = $("#comment").val();
-
+$("#contact").on("submit", function(event) {
+    event.preventDefault();
+    var form = this;
+    var button = $("#button-blue");
+    button.prop("disabled", true);
     $.ajax({
-        url: "",
-        
+        url: form.action,
         type: "post",
-        data: {nome: txt_nome, comentario: txt_comentario, email: txt_email},
-        beforeSend: function() {
-        
-            console.log("Tentando enviar os dados....");
-
+        data: $(form).serialize(),
+        timeout: 10000
+    }).done(function() {
+        alert("Message saved successfully");
+        form.reset();
+    }).fail(function(response) {
+        if (response.status === 422) {
+            alert(response.responseText);
+        } else {
+            alert("Unable to save the message. Please try again later.");
         }
-    }).done(function(e) {
-        alert("Dados Salvos");
-    })
-
+    }).always(function() {
+        button.prop("disabled", false);
+    });
 });

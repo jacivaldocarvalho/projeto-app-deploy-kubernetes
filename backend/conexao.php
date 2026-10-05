@@ -1,18 +1,21 @@
 <?php
-$servername = "mysql-connection";
-$username = "root";
-$password = "";
-$database = "meubanco";
 
-// Criar conexão
-
-
-$link = new mysqli($servername, $username, $password, $database);
-
-/* check connection */
-if (mysqli_connect_errno()) {
-    printf("Connect failed: %s\n", mysqli_connect_error());
-    exit();
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+$configuration = [];
+foreach (['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'] as $variable) {
+    $value = getenv($variable);
+    if ($value === false || $value === '') {
+        throw new RuntimeException('Missing database configuration');
+    }
+    $configuration[$variable] = $value;
 }
-
-?>
+// Criar conexão
+$link = mysqli_init();
+$link->options(MYSQLI_OPT_CONNECT_TIMEOUT, 5);
+$link->real_connect(
+    $configuration['DB_HOST'],
+    $configuration['DB_USER'],
+    $configuration['DB_PASSWORD'],
+    $configuration['DB_NAME']
+);
+$link->set_charset('utf8mb4');
