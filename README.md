@@ -1,11 +1,11 @@
-# Kubernetes Application Deployment
+# Contact Form on Kubernetes
 
 [![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL 8.4 LTS](https://img.shields.io/badge/MySQL-8.4_LTS-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![Kubernetes](https://img.shields.io/badge/Deployment-Kubernetes-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Validate application](https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes/actions/workflows/validate.yml)
+[![Validate application](https://github.com/jacivaldocarvalho/kubernetes-contact-form/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jacivaldocarvalho/kubernetes-contact-form/actions/workflows/validate.yml)
 
 A reference project for building and deploying a database-backed contact form on
 Kubernetes. It combines a static HTML/CSS/jQuery frontend, a PHP/Apache backend
@@ -56,8 +56,8 @@ consistently and commit those changes before deployment.
 Clone the repository:
 
 ```sh
-git clone https://github.com/jacivaldocarvalho/projeto-app-deploy-kubernetes.git
-cd projeto-app-deploy-kubernetes
+git clone https://github.com/jacivaldocarvalho/kubernetes-contact-form.git
+cd kubernetes-contact-form
 ```
 
 Copy `.env.example` to `.env` (`cp .env.example .env` on Linux or
