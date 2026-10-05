@@ -16,6 +16,10 @@ Normal completion, setup failure and test failure trigger resource cleanup.
 
 From the repository root:
 
+The [Makefile](../Makefile) provides `make setup`, `make check` and `make test`
+for these checks. Set `PYTHON=/path/to/venv/bin/python` to reuse another virtualenv.
+Real cluster checks are a separate, manual [kind workflow](local-kind.md).
+
 ```sh
 python3 -m venv .venv
 .venv/bin/python -m pip install -r tests/requirements.txt
@@ -62,6 +66,10 @@ copy; its checksum is still verified.
   pinned official schema, without applying resources.
 - `test_manifest_validation.py`: rejection of unknown fields and altered schema
   contents, plus correct handling of integer and named ports.
+- `test_local_workflow.py`: explicit cluster context, namespace and kubeconfig;
+  rejection of unowned clusters, unsafe names and unconfirmed deletion.
+- `test_smoke_local.py`: missing form and missing stored message fail even with
+  Python optimization enabled; the temporary tunnel is terminated on failure.
 
 Deployment tests never execute real push, Secret creation or kubectl apply.
 Integration tests only change their own disposable database.
@@ -84,7 +92,7 @@ be configured separately if desired; this phase does not change repository rules
 
 ## Limits
 
-These tests do not exercise the Windows batch script, browser behavior, actual
+These automated tests do not exercise WSL, browser behavior, actual
 Kubernetes probes/scheduling, production workloads or database migration.
 Docker-dependent tests fail if their tools or prebuilt images are missing rather
 than being silently skipped. Resource limits are exercised during integration,

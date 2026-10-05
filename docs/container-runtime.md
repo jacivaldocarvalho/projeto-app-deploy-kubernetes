@@ -13,7 +13,7 @@ runtime configuration; they are not embedded in either image.
 
 ## Build and deployment
 
-The scripts require Docker, Git and kubectl with built-in Kustomize support.
+The registry deployment script requires Docker, Git and kubectl with built-in Kustomize support.
 They use the full Git commit hash as the tag for both application images and
 refuse to deploy a repository with modified or untracked files. Ignored `.env`
 configuration does not make the repository dirty.
@@ -31,21 +31,21 @@ Before an actual deployment:
 2. Confirm registry access to `jncarvalho` and the kubectl context/namespace.
 3. Confirm that the cluster has a default StorageClass and LoadBalancer support.
 4. Commit the application changes and ensure the working tree is clean.
-5. Run `bash script.sh` on Linux or `script.bat` on Windows.
+5. Run `make deploy-registry` on Linux/WSL, or call `bash script.sh` directly.
 
-The scripts copy the manifests to an owned temporary directory, render the image
-tags with `kubectl kustomize`, build and push both images, create the Secret only
-if absent, apply the rendered resources and wait for the deployments. They clean
+The Bash script copies the manifests to an owned temporary directory, renders the image
+tags with `kubectl kustomize`, builds and pushes both images, creates the Secret only
+if absent, applies the rendered resources and waits for the deployments. It cleans
 up temporary files on normal completion or command failure.
 
 The source manifest deliberately uses the `unpublished` tag. Do not apply it
-directly; the scripts replace this tag with the commit hash before application.
+directly; the script replaces this tag with the commit hash before application.
 Rendering does not modify tracked files. Changed commits change the Pod template
 image reference and trigger a rollout; rebuilding the same commit does not
 trigger a new rollout automatically. Do not overwrite an already-published
 commit tag with different image contents.
 
-Both scripts preserve an existing Secret. Its values, rather than a changed
+The script preserves an existing Secret. Its values, rather than a changed
 local `.env`, remain authoritative for a subsequent deployment. Password changes
 must be coordinated with the running database.
 
@@ -121,5 +121,6 @@ Local validation on 2026-10-04 passed:
 
 Disposable containers, their database data and their network were removed.
 No existing database was migrated, no images were pushed and no cluster was
-modified. The Windows batch script was reviewed but not executed. Browser
+modified. The Windows batch script was reviewed but not executed during this phase;
+native Windows support has since been removed in favor of Linux/WSL. Browser
 interaction, cluster scheduling/probe execution and load tests were not performed.

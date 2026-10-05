@@ -2,6 +2,7 @@
 .env
 .env.*
 .venv
+.local
 **/__pycache__
 tests
 .github
