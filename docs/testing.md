@@ -2,8 +2,9 @@
 
 ## Requirements
 
-Run these checks on Linux with Python 3.12, Node.js, Bash, Git, Docker and kubectl
-with built-in Kustomize. Docker must be running. No cluster, registry login,
+Run these checks on Linux with Python 3.12, Node.js 24, Bash, Git, Docker and kubectl
+with built-in Kustomize. Docker must be running. Install frontend dependencies and Chromium before the
+integration suite (see below). No cluster, registry login,
 production credentials or local `.env` is required.
 
 Python packages are test-only dependencies pinned in `tests/requirements.txt`.
@@ -25,12 +26,16 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r tests/requirements.txt
 
 bash -n script.sh
-node --check frontend/js.js
+make frontend-setup
+make frontend-browser-setup
+make frontend-check
+make frontend-test
 git diff --check
 .venv/bin/python tests/validate_manifests.py
 
 docker build -f backend/dockerfile -t application-validation-backend:local .
 docker build -f database/dockerfile -t application-validation-database:local .
+docker build -f frontend/dockerfile -t application-validation-frontend:local .
 for file in index.php conexao.php health.php; do
   docker run --rm application-validation-backend:local php -l "/var/www/html/$file"
 done
@@ -55,7 +60,8 @@ copy; its checksum is still verified.
 
 ## Test coverage
 
-- `test_application.py`: actual HTTP form/assets, runtime versions and MySQL
+- `test_application.py`: React shell/assets through Nginx and directly through PHP,
+  four Chromium UI checks with database persistence, runtime versions and MySQL
   authentication; exact persistence of apostrophes, SQL injection text and Unicode;
   input boundaries, malformed UTF-8 and non-string fields; HTTP method rules;
   readiness, missing schema, invalid credentials, a stalled database and recovery.
@@ -78,7 +84,8 @@ Integration tests only change their own disposable database.
 
 [Validate application](../.github/workflows/validate.yml) runs on pushes to `main`
 and `develop`, pull requests targeting `main` and manual dispatch. It performs the
-same schema, image, syntax and test checks described above. The job is time-limited
+same schema, three-image builds, TypeScript/component checks, Chromium and
+API/deployment tests described above. The job is time-limited
 and superseded runs are cancelled.
 
 Official actions are pinned to commit SHAs. The token has `contents: read`, checkout
@@ -92,9 +99,9 @@ be configured separately if desired; this phase does not change repository rules
 
 ## Limits
 
-These automated tests do not exercise WSL, browser behavior, actual
+These automated tests do not exercise WSL, browser engines beyond Chromium, actual
 Kubernetes probes/scheduling, production workloads or database migration.
-Docker-dependent tests fail if their tools or prebuilt images are missing rather
+Docker- and browser-dependent tests fail if their tools or prebuilt images are missing rather
 than being silently skipped. Resource limits are exercised during integration,
 but the suite is not a capacity benchmark.
 

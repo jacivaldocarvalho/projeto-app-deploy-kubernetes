@@ -46,19 +46,24 @@ are preserved; editing the credential file does not rotate database passwords.
 
 Local image tags are unique for each deployment, including uncommitted edits.
 Kustomize uses the source manifests, with temporary image and namespace overrides.
-All six PHP replicas and the MySQL resource/probe settings remain in use. The
+All six PHP replicas and the MySQL resource/probe settings remain in use.
+Two Nginx frontend replicas serve React. The existing `php` Service points to
+these replicas, which call PHP through the internal `php-backend` Service.
+The local flow now builds and loads frontend, backend and database images. The
 LoadBalancer Service can have a pending external address; access uses port-forward.
 The default StorageClass must provision the 10Gi claim; check `make status` if
 deployment cannot become ready. Do not manually apply the unpublished images.
 
 ## Smoke test and persistence
 
-`make smoke` starts and cleans up its own localhost tunnel. It verifies the form,
+`make smoke` starts and cleans up its own localhost tunnel. It verifies the React HTML shell,
 HTTP readiness and submission, checks the stored row and bound PVC, deletes the
 local MySQL pod, waits for its replacement, then confirms the message survived
 and application readiness recovered. It retains one uniquely marked test message.
 It intentionally interrupts the local database briefly; run it against disposable
-project data. It does not exercise browser JavaScript or simulate a sustained
+project data. Use `make frontend-browser` for separate browser checks (see
+[Frontend documentation](frontend.md)). The smoke test does not execute JavaScript
+or simulate a sustained
 database outage, node loss, disaster recovery or production load.
 
 Data survives pod replacement within this cluster. Removing the kind cluster

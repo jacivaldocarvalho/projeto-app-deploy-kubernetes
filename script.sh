@@ -34,6 +34,7 @@ fi
 image_tag="$(git rev-parse --verify HEAD)"
 backend_image="jncarvalho/projeto-backend:$image_tag"
 database_image="jncarvalho/projeto-database:$image_tag"
+frontend_image="jncarvalho/projeto-frontend:$image_tag"
 render_directory="$(mktemp -d)"
 trap 'rm -rf -- "$render_directory"' EXIT
 cp deployment.yml services.yml "$render_directory/"
@@ -48,16 +49,20 @@ images:
     newTag: "$image_tag"
   - name: jncarvalho/projeto-database
     newTag: "$image_tag"
+  - name: jncarvalho/projeto-frontend
+    newTag: "$image_tag"
 EOF
 kubectl kustomize "$render_directory" > "$render_directory/rendered.yml"
 
 echo "Building application images for commit $image_tag..."
 docker build -f backend/dockerfile -t "$backend_image" .
 docker build -f database/dockerfile -t "$database_image" .
+docker build -f frontend/dockerfile -t "$frontend_image" .
 
 echo 'Pushing application images...'
 docker push "$backend_image"
 docker push "$database_image"
+docker push "$frontend_image"
 
 echo 'Configuring database credentials...'
 if ! kubectl get secret application-database >/dev/null 2>&1; then
@@ -72,3 +77,4 @@ kubectl apply -f "$render_directory/rendered.yml"
 echo 'Waiting for application deployments...'
 kubectl rollout status deployment/mysql --timeout=600s
 kubectl rollout status deployment/php --timeout=300s
+kubectl rollout status deployment/frontend --timeout=300s

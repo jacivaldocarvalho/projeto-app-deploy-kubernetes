@@ -1,5 +1,10 @@
 # Container runtime and deployment
 
+The current deployment includes a React/Nginx frontend image and internal
+`php-backend` Service. See [Frontend architecture](frontend.md) for the updated
+request path, builds and checks. The runtime validation record below describes
+the original PHP/MySQL phase.
+
 ## Runtime versions
 
 The backend uses PHP 8.4 with Apache on Debian Bookworm. The database uses
@@ -14,8 +19,8 @@ runtime configuration; they are not embedded in either image.
 ## Build and deployment
 
 The registry deployment script requires Docker, Git and kubectl with built-in Kustomize support.
-They use the full Git commit hash as the tag for both application images and
-refuse to deploy a repository with modified or untracked files. Ignored `.env`
+It uses the full Git commit hash as the tag for all three application images and
+refuses to deploy a repository with modified or untracked files. Ignored `.env`
 configuration does not make the repository dirty.
 
 For local builds only, use:
@@ -23,6 +28,7 @@ For local builds only, use:
 ```sh
 docker build -f backend/dockerfile -t projeto-backend:local .
 docker build -f database/dockerfile -t projeto-database:local .
+docker build -f frontend/dockerfile -t projeto-frontend:local .
 ```
 
 Before an actual deployment:
@@ -34,7 +40,7 @@ Before an actual deployment:
 5. Run `make deploy-registry` on Linux/WSL, or call `bash script.sh` directly.
 
 The Bash script copies the manifests to an owned temporary directory, renders the image
-tags with `kubectl kustomize`, builds and pushes both images, creates the Secret only
+tags with `kubectl kustomize`, builds and pushes all three images, creates the Secret only
 if absent, applies the rendered resources and waits for the deployments. It cleans
 up temporary files on normal completion or command failure.
 

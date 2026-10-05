@@ -1,5 +1,7 @@
 # Contact Form on Kubernetes
 
+[![React](https://img.shields.io/badge/React-19-149eca?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![PHP 8.4](https://img.shields.io/badge/PHP-8.4-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![MySQL 8.4 LTS](https://img.shields.io/badge/MySQL-8.4_LTS-4479A1?logo=mysql&logoColor=white)](https://www.mysql.com/)
 [![Docker](https://img.shields.io/badge/Containers-Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
@@ -8,7 +10,7 @@
 [![Validate application](https://github.com/jacivaldocarvalho/kubernetes-contact-form/actions/workflows/validate.yml/badge.svg?branch=main)](https://github.com/jacivaldocarvalho/kubernetes-contact-form/actions/workflows/validate.yml)
 
 A reference project for building and deploying a database-backed contact form on
-Kubernetes. It combines a static HTML/CSS/jQuery frontend, a PHP/Apache backend
+Kubernetes. It combines a React/TypeScript frontend served by Nginx, a PHP/Apache backend
 and MySQL persistence with scripts for image publication and deployment.
 
 The focus is a small, reproducible application deployment: runtime configuration,
@@ -20,19 +22,36 @@ and current limitations are described below.
 
 ```mermaid
 flowchart LR
-    Browser[Browser] -->|HTTP| WebService["php Service · LoadBalancer"]
-    WebService --> App["PHP / Apache · 6 replicas<br/>Frontend + POST endpoint"]
-    App -->|SQL| DatabaseService["mysql-connection Service"]
-    DatabaseService --> Database["MySQL · 1 replica"]
-    Database --> Storage["mysql-dados PVC · 10Gi"]
+    Browser["Browser<br/>React runs here"]
+    subgraph Cluster["Kubernetes namespace"]
+        Public["Service: php<br/>LoadBalancer · TCP 80"]
+        Web["Deployment: frontend<br/>2 Nginx pods · TCP 80"]
+        API["Service: php-backend<br/>ClusterIP · TCP 80"]
+        PHP["Deployment: php<br/>6 Apache/PHP pods · TCP 80"]
+        SQL["Service: mysql-connection<br/>ClusterIP · TCP 3306"]
+        DB["Deployment: mysql<br/>1 MySQL pod · TCP 3306"]
+        PVC[("PVC: mysql-dados<br/>10Gi · ReadWriteOnce")]
+        Public -->|"app=frontend"| Web
+        Web -->|"HTTP proxy"| API
+        API -->|"app=php"| PHP
+        PHP -->|"MySQL protocol"| SQL
+        SQL -->|"app=mysql"| DB
+        DB ---|"/var/lib/mysql"| PVC
+    end
+    Browser -->|"HTTP · same origin"| Public
 ```
 
-Apache serves the frontend and PHP endpoints on the same origin. The backend
+See [Architecture and networking](docs/architecture.md) for DNS resolution,
+Service selectors, local access, readiness dependencies and persistent storage.
+
+Nginx serves the React bundle and proxies the PHP endpoints on the same origin.
+The existing `php` LoadBalancer Service is the entry point; `php-backend` is internal.
+Apache also serves the compiled frontend for direct GET compatibility. The backend
 validates submissions and inserts messages using prepared statements. MySQL
 credentials are supplied at runtime through a Kubernetes Secret.
 
-The PHP and MySQL base images are pinned by digest. Deployment scripts use the
-full Git commit hash as the tag for both application images, render the manifests
+The Node, Nginx, PHP and MySQL base images are pinned by digest. Deployment scripts use the
+full Git commit hash as the tag for all three application images, render the manifests
 with kubectl's built-in Kustomize and wait for deployment readiness.
 
 ## Requirements
@@ -48,7 +67,8 @@ with kubectl's built-in Kustomize and wait for deployment readiness.
 External access uses a LoadBalancer Service. For local clusters without an
 external load balancer, use the port-forward command below.
 
-Image repositories are currently configured in `deployment.yml` and `script.sh`.
+Registry deployment requires push access to `jncarvalho/projeto-frontend` as well
+as the backend and database repositories. Image repositories are currently configured in `deployment.yml` and `script.sh`.
 If you use another registry or account, update both files
 consistently and commit those changes before deployment.
 
@@ -149,7 +169,7 @@ The POST example is a Bash command and creates a message.
 
 | Method and path | Behavior |
 | --- | --- |
-| `GET /` or `GET /index.php` | Serve the contact form |
+| `GET /` or `GET /index.php` | Serve the React application (JavaScript required) |
 | `POST /index.php` | Validate and persist a message |
 | `GET /health.php` | Check database connectivity and application table access |
 
@@ -161,6 +181,23 @@ Successful requests return HTTP 200. Invalid submissions return 422, unsupported
 methods return 405 and persistence/readiness failures return 503. Error responses
 exclude internal database details. Cross-origin access is not enabled.
 
+## Frontend development
+
+Use Node.js 24 and run:
+
+```sh
+make frontend-setup
+make frontend-check
+make frontend-test
+make access
+```
+
+Keep the access tunnel running and use another terminal for `make frontend-dev`.
+Open the Vite URL printed in that terminal. Its PHP requests are proxied to
+`http://127.0.0.1:8080`; adjust `frontend/vite.config.ts` if you change that port.
+See [Frontend architecture and validation](docs/frontend.md) for Docker, browser
+tests and compatibility details.
+
 ## Local builds and validation
 
 Build images without pushing or deploying:
@@ -168,6 +205,7 @@ Build images without pushing or deploying:
 ```sh
 docker build -f backend/dockerfile -t projeto-backend:local .
 docker build -f database/dockerfile -t projeto-database:local .
+docker build -f frontend/dockerfile -t projeto-frontend:local .
 ```
 
 Image builds, PHP/Bash/JavaScript syntax checks, offline Kubernetes schema checks
@@ -184,7 +222,8 @@ coverage and workflow details. The workflow does not publish images or deploy.
 
 The local kind workflow has validated deployment, HTTP submission, PVC binding
 and persistence after MySQL pod replacement. See [Local Kubernetes](docs/local-kind.md).
-Browser interaction, WSL execution and load testing have not been validated.
+Chromium checks cover submission, validation, error feedback, mobile layout and
+keyboard focus. WSL execution, other browsers and load testing have not been validated.
 
 ## Operations and limitations
 
@@ -197,8 +236,8 @@ Browser interaction, WSL execution and load testing have not been validated.
 - Message IDs retain their original random range and are not guaranteed unique.
 - Authentication, rate limiting, TLS termination, backups and network policies
   are not configured by this repository.
-- The frontend depends on externally hosted jQuery, fonts and CSS images,
-  including HTTP image URLs.
+- The React frontend requires JavaScript. Assets and fonts are local; no CDN
+  is needed at runtime.
 
 This deployment targets a fresh MySQL 8.4 installation. Detailed configuration,
 probe behavior, resource values, persistence and rollback guidance are available

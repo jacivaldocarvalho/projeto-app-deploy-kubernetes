@@ -40,9 +40,11 @@ PY
     tag="local-$(date +%s)-$RANDOM"
     backend="contact-form-backend:$tag"
     database="contact-form-database:$tag"
+    frontend="contact-form-frontend:$tag"
     docker build -f backend/dockerfile -t "$backend" .
     docker build -f database/dockerfile -t "$database" .
-    kind load docker-image "$backend" "$database" --name "$cluster"
+    docker build -f frontend/dockerfile -t "$frontend" .
+    kind load docker-image "$backend" "$database" "$frontend" --name "$cluster"
     render="$(mktemp -d)"
     trap 'rm -rf -- "$render"' EXIT
     cp deployment.yml services.yml "$render/"
@@ -58,6 +60,9 @@ images:
   - name: jncarvalho/projeto-database
     newName: contact-form-database
     newTag: "$tag"
+  - name: jncarvalho/projeto-frontend
+    newName: contact-form-frontend
+    newTag: "$tag"
 EOF
     kubectl kustomize "$render" > "$render/rendered.yml"
     if ! k get secret application-database >/dev/null 2>&1; then
@@ -66,9 +71,10 @@ EOF
     k apply -f "$render/rendered.yml"
     k rollout status deployment/mysql --timeout=600s
     k rollout status deployment/php --timeout=300s
+    k rollout status deployment/frontend --timeout=300s
     ;;
 status) require_cluster; k get deployments,pods,services,pvc; ;;
-logs) require_cluster; k logs deployment/php --tail=100; ;;
+logs) require_cluster; k logs deployment/frontend --tail=100; k logs deployment/php --tail=100; ;;
 access) require_cluster; k port-forward --address 127.0.0.1 service/php "${LOCAL_PORT:-8080}:80"; ;;
 smoke)
     require_cluster

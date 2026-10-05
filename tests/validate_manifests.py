@@ -76,7 +76,7 @@ def main():
         for filename in ("deployment.yml", "services.yml"):
             shutil.copy(ROOT / filename, path / filename)
         tag = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        config = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["deployment.yml", "services.yml"], "images": [{"name": name, "newTag": tag} for name in ("jncarvalho/projeto-backend", "jncarvalho/projeto-database")]}
+        config = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["deployment.yml", "services.yml"], "images": [{"name": name, "newTag": tag} for name in ("jncarvalho/projeto-backend", "jncarvalho/projeto-database", "jncarvalho/projeto-frontend")]}
         (path / "kustomization.yaml").write_text(yaml.safe_dump(config))
         rendered = subprocess.check_output(["kubectl", "kustomize", str(path)], text=True)
         print("Rendered manifests:")

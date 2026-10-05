@@ -3,7 +3,11 @@
 .env.*
 .venv
 .local
+frontend/node_modules
+frontend/dist
 **/__pycache__
 tests
 .github
 docs
+frontend/test-results
+frontend/playwright-report
