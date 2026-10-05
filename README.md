@@ -42,13 +42,14 @@ with kubectl's built-in Kustomize and wait for deployment readiness.
 - kubectl with built-in Kustomize, configured for the target cluster and namespace.
 - A Kubernetes cluster with a default StorageClass able to provision a 10Gi PVC.
 - Registry credentials with push access to the configured `jncarvalho` repositories.
-- Bash on Linux, or Command Prompt on Windows.
+- Linux or a Linux environment in WSL, with Bash and GNU Make. Native Windows
+  execution is not supported; Docker and kubectl must be accessible inside WSL.
 
 External access uses a LoadBalancer Service. For local clusters without an
 external load balancer, use the port-forward command below.
 
-Image repositories are currently configured in `deployment.yml`, `script.sh` and
-`script.bat`. If you use another registry or account, update all three files
+Image repositories are currently configured in `deployment.yml` and `script.sh`.
+If you use another registry or account, update both files
 consistently and commit those changes before deployment.
 
 ## Getting started
@@ -60,8 +61,22 @@ git clone https://github.com/jacivaldocarvalho/kubernetes-contact-form.git
 cd kubernetes-contact-form
 ```
 
-Copy `.env.example` to `.env` (`cp .env.example .env` on Linux or
-`copy .env.example .env` on Windows). Replace both password placeholders with
+For local Kubernetes development without a registry, use the
+[kind and Makefile workflow](docs/local-kind.md):
+
+```sh
+make kind-up
+make deploy-local
+make smoke
+make access
+```
+
+Run `make help` for checks, tests, logs and cluster commands. Local deployment
+generates its own credentials and accepts uncommitted changes. The steps below
+describe the separate registry-based deployment workflow.
+
+Copy `.env.example` to `.env` with `cp .env.example .env`.
+Replace both password placeholders with
 distinct strong passwords. Values use `KEY=value` without shell quotes; the
 scripts consume this file with `kubectl --from-env-file`.
 
@@ -86,17 +101,16 @@ Also confirm the intended namespace and authenticate to the configured registry
 with `docker login`. The scripts **build and push images and modify the current
 cluster namespace**.
 
-On Linux:
+Deploy with the Makefile:
 
 ```sh
-bash script.sh
+make deploy-registry
 ```
 
-On Windows:
-
-```bat
-script.bat
-```
+This target calls `script.sh`, which implements registry publication and deployment.
+You can also run `bash script.sh` directly. It uses the current kubectl context and
+namespace; it does not create a cluster. `make deploy-local` instead uses the
+dedicated kind cluster and does not publish images.
 
 The source manifest uses an `unpublished` placeholder tag. Use the scripts to
 render commit tags before applying resources; do not apply `deployment.yml`
@@ -168,8 +182,9 @@ and test checks on pushes to `main`/`develop` and pull requests targeting `main`
 See [Testing and continuous integration](docs/testing.md) for local commands,
 coverage and workflow details. The workflow does not publish images or deploy.
 
-Windows batch execution, browser interaction, cluster execution and load testing
-have not been validated.
+The local kind workflow has validated deployment, HTTP submission, PVC binding
+and persistence after MySQL pod replacement. See [Local Kubernetes](docs/local-kind.md).
+Browser interaction, WSL execution and load testing have not been validated.
 
 ## Operations and limitations
 

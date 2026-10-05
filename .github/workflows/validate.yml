@@ -42,7 +42,9 @@ jobs:
       - name: Validate workflow and source syntax
         run: |
           docker run --rm -v "$PWD:/repo:ro" --workdir /repo rhysd/actionlint:1.7.11@sha256:6f03470d0152251d7f07f7c4dc019dbe7024c72cd952f839544c7798843efa8f
-          bash -n script.sh
+          bash -n script.sh scripts/local.sh
+          python -m py_compile scripts/smoke_local.py
+          make help
           node --check frontend/js.js
           git diff --check HEAD^ HEAD
 
